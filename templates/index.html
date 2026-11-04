@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Materiais por Peso (Kg) | EcoAlmoxarifado</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Inter & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        :focus-visible { outline: 3px solid #059669; outline-offset: 2px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 h-full flex flex-col antialiased">
+
+    <!-- Skip link para acessibilidade -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-emerald-700 focus:shadow-md">
+        Pular para o conteúdo principal
+    </a>
+
+    <!-- Cabeçalho -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-xs" role="banner">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-600 text-white p-2.5 rounded-lg shadow-sm" aria-hidden="true">
+                    <i class="fa-solid fa-scale-balanced text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-gray-900 leading-tight">EcoAlmoxarifado &middot; Gestão por Peso (Kg)</h1>
+                    <p class="text-xs text-gray-500">Alumínio, PET e Papel &middot; 20 Usuários Cadastrados</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <span class="hidden sm:inline-flex items-center text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-200 font-medium" role="status">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse" aria-hidden="true"></span>
+                    Sincronizado (Servidor Flask)
+                </span>
+
+                <!-- Menu de Opções -->
+                <div class="relative">
+                    <button onclick="toggleDropdown()" id="menu-btn" aria-expanded="false" aria-haspopup="true" class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="Opções de Dados">
+                        <i class="fa-solid fa-ellipsis-vertical text-lg" aria-hidden="true"></i>
+                        <span class="sr-only">Opções de Dados</span>
+                    </button>
+                    <div id="dropdown-menu" class="hidden absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-40">
+                        <button onclick="exportData()" class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2">
+                            <i class="fa-solid fa-download text-gray-400 w-5" aria-hidden="true"></i>
+                            <span>Exportar JSON (Backup)</span>
+                        </button>
+                        <label class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2 cursor-pointer">
+                            <i class="fa-solid fa-upload text-gray-400 w-5" aria-hidden="true"></i>
+                            <span>Importar JSON</span>
+                            <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(event)">
+                        </label>
+                        <div class="border-t border-gray-100 my-1" aria-hidden="true"></div>
+                        <button onclick="resetData()" class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2">
+                            <i class="fa-solid fa-rotate-right text-red-400 w-5" aria-hidden="true"></i>
+                            <span>Reiniciar Dados Padrão</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main id="main-content" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" role="main">
+
+        <!-- Sistema de Notificações (Toast) -->
+        <div id="toast-container" aria-live="polite" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2"></div>
+
+        <!-- Dashboard / Resumo Estatístico em Kg -->
+        <section aria-label="Estatísticas Gerais em Quilogramas">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- Card Alumínio -->
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Alumínio (Total)</p>
+                        <h2 id="stat-aluminio" class="text-2xl font-bold text-gray-900 mt-1">0.0 Kg</h2>
+                        <span class="inline-flex items-center text-xs text-emerald-700 font-medium mt-2 bg-emerald-50 px-2 py-0.5 rounded-md">
+                            <i class="fa-solid fa-can-food mr-1"></i> Estoque unificado
+                        </span>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl" aria-hidden="true">
+                        <i class="fa-solid fa-weight-scale"></i>
+                    </div>
+                </div>
+
+                <!-- Card PET -->
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">PET (Total)</p>
+                        <h2 id="stat-pet" class="text-2xl font-bold text-gray-900 mt-1">0.0 Kg</h2>
+                        <span class="inline-flex items-center text-xs text-blue-700 font-medium mt-2 bg-blue-50 px-2 py-0.5 rounded-md">
+                            <i class="fa-solid fa-bottle-water mr-1"></i> Estoque unificado
+                        </span>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl" aria-hidden="true">
+                        <i class="fa-solid fa-weight-scale"></i>
+                    </div>
+                </div>
+
+                <!-- Card Papel -->
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Papel (Total)</p>
+                        <h2 id="stat-papel" class="text-2xl font-bold text-gray-900 mt-1">0.0 Kg</h2>
+                        <span class="inline-flex items-center text-xs text-amber-700 font-medium mt-2 bg-amber-50 px-2 py-0.5 rounded-md">
+                            <i class="fa-solid fa-newspaper mr-1"></i> Estoque unificado
+                        </span>
+                    </div>
+                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-xl" aria-hidden="true">
+                        <i class="fa-solid fa-weight-scale"></i>
+                    </div>
+                </div>
+
+                <!-- Card Geral Ecossistema -->
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Geral (Todos os Materiais)</p>
+                        <h2 id="stat-geral" class="text-2xl font-bold text-emerald-600 mt-1">0.0 Kg</h2>
+                        <span class="inline-flex items-center text-xs text-slate-700 font-medium mt-2 bg-slate-100 px-2 py-0.5 rounded-md">
+                            <i class="fa-solid fa-boxes-stacked mr-1"></i> 20 usuários
+                        </span>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center text-xl" aria-hidden="true">
+                        <i class="fa-solid fa-earth-americas"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Painel de Controle e Tabela por Peso -->
+        <section class="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden" aria-label="Controle de Quantitativo por Peso">
+            <div class="p-5 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Quantitativo por Usuário (Kg)</h2>
+                    <p class="text-sm text-gray-500">Insira diretamente nos campos abaixo o peso em Quilogramas (Kg) disponível por usuário.</p>
+                </div>
+
+                <!-- Filtro de Busca -->
+                <div class="flex items-center gap-3">
+                    <div class="relative w-full sm:w-72">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                            <i class="fa-solid fa-search" aria-hidden="true"></i>
+                        </span>
+                        <input type="text" id="search-input" oninput="renderTable()" placeholder="Buscar código (ex: C910)..." class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" role="table">
+                    <thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                        <tr>
+                            <th scope="col" class="py-3.5 px-6">Usuário</th>
+                            <th scope="col" class="py-3.5 px-6 text-center">Alumínio (Kg)</th>
+                            <th scope="col" class="py-3.5 px-6 text-center">PET (Kg)</th>
+                            <th scope="col" class="py-3.5 px-6 text-center">Papel (Kg)</th>
+                            <th scope="col" class="py-3.5 px-6 text-right">Total do Usuário</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body" class="divide-y divide-gray-200 text-sm">
+                        <!-- Gerado via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="bg-white border-t border-gray-200 py-6 mt-auto" role="contentinfo">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
+            <p>&copy; 2026 EcoAlmoxarifado Pro. Gestão contínua de 20 usuários por Quilograma (Kg).</p>
+            <span class="inline-flex items-center text-emerald-600 font-medium"><i class="fa-solid fa-universal-access mr-1.5"></i> WCAG AA &middot; Sem distinção de grupos</span>
+        </div>
+    </footer>
+
+    <!-- Lógica JavaScript Integrada com a API Python -->
+    <script>
+        const exactCodes = [
+            'C910', 'C920', 'C930', 'C940', 'C950', 
+            'C960', 'C970', 'C980', 'C990', 'C1000', 
+            'C911', 'C921', 'C931', 'C941', 'C951', 
+            'C961', 'C971', 'C981', 'C991', 'C1001'
+        ];
+
+        let users = [];
+
+        async function loadUsersFromBackend() {
+            try {
+                const response = await fetch('/api/users');
+                users = await response.json();
+                renderDashboard();
+                renderTable();
+            } catch (error) {
+                showToast('Erro ao carregar dados do servidor', 'error');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadUsersFromBackend();
+        });
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-emerald-600' : 'bg-blue-600';
+            
+            toast.className = `${bgColor} text-white px-4 py-3 rounded-xl shadow-lg flex items-center space-x-3 text-sm font-medium transform transition-all duration-300 translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-lg"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function renderDashboard() {
+            let totalAluminio = 0;
+            let totalPet = 0;
+            let totalPapel = 0;
+
+            users.forEach(u => {
+                totalAluminio += parseFloat(u.aluminio) || 0;
+                totalPet += parseFloat(u.pet) || 0;
+                totalPapel += parseFloat(u.papel) || 0;
+            });
+
+            const totalGeral = totalAluminio + totalPet + totalPapel;
+
+            document.getElementById('stat-aluminio').textContent = `${totalAluminio.toFixed(1)} Kg`;
+            document.getElementById('stat-pet').textContent = `${totalPet.toFixed(1)} Kg`;
+            document.getElementById('stat-papel').textContent = `${totalPapel.toFixed(1)} Kg`;
+            document.getElementById('stat-geral').textContent = `${totalGeral.toFixed(1)} Kg`;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('users-table-body');
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+
+            const filtered = users.filter(u => u.id.toLowerCase().includes(searchQuery));
+
+            tbody.innerHTML = '';
+
+            filtered.forEach(u => {
+                const houseTotal = (parseFloat(u.aluminio) || 0) + (parseFloat(u.pet) || 0) + (parseFloat(u.papel) || 0);
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50/80 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-4 px-6 font-bold text-gray-900 font-mono text-base flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>${u.id}</span>
+                    </td>
+                    <td class="py-4 px-6 text-center">
+                        <div class="relative max-w-[130px] mx-auto">
+                            <input type="number" step="0.1" min="0" value="${u.aluminio}" onchange="updateWeight('${u.id}', 'aluminio', this.value)" aria-label="Alumínio (Kg) para ${u.id}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-center font-medium focus:ring-2 focus:ring-emerald-500">
+                            <span class="absolute right-2.5 top-2 text-xs text-gray-400 pointer-events-none">Kg</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 text-center">
+                        <div class="relative max-w-[130px] mx-auto">
+                            <input type="number" step="0.1" min="0" value="${u.pet}" onchange="updateWeight('${u.id}', 'pet', this.value)" aria-label="PET (Kg) para ${u.id}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-center font-medium focus:ring-2 focus:ring-emerald-500">
+                            <span class="absolute right-2.5 top-2 text-xs text-gray-400 pointer-events-none">Kg</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 text-center">
+                        <div class="relative max-w-[130px] mx-auto">
+                            <input type="number" step="0.1" min="0" value="${u.papel}" onchange="updateWeight('${u.id}', 'papel', this.value)" aria-label="Papel (Kg) para ${u.id}" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-center font-medium focus:ring-2 focus:ring-emerald-500">
+                            <span class="absolute right-2.5 top-2 text-xs text-gray-400 pointer-events-none">Kg</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 text-right font-bold text-emerald-700 font-mono">
+                        ${houseTotal.toFixed(1)} Kg
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function updateWeight(userId, materialKey, value) {
+            const numVal = Math.max(0, parseFloat(value) || 0);
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [materialKey]: numVal })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    const user = users.find(u => u.id === userId);
+                    if (user) user[materialKey] = numVal;
+                    renderDashboard();
+                    showToast(`Usuário ${userId} atualizado: ${materialKey.toUpperCase()} = ${numVal.toFixed(1)} Kg`);
+                }
+            } catch (error) {
+                showToast('Erro ao comunicar com o servidor', 'error');
+            }
+        }
+
+        function exportData() {
+            const data = {
+                version: "2.1",
+                system: "EcoAlmoxarifado Peso (Kg) - Servidor Python",
+                exportDate: new Date().toISOString(),
+                totalUsers: users.length,
+                users
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `eco_peso_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('Dados exportados com sucesso em JSON!');
+        }
+
+        function importData(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = (e) => {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        if (parsed.users && Array.isArray(parsed.users) && parsed.users.length === 20) {
+                            users = parsed.users;
+                            renderTable();
+                            renderDashboard();
+                            showToast('Dados importados com sucesso!');
+                        } else {
+                            alert('Arquivo inválido. O sistema exige exatamente 20 usuários.');
+                        }
+                    } catch (err) {
+                        alert('Erro ao processar arquivo JSON.');
+                    }
+                };
+            }
+        }
+
+        async function resetData() {
+            if (confirm('Deseja reiniciar todos os pesos para 0.0 Kg?')) {
+                try {
+                    const response = await fetch('/api/reset', { method: 'POST' });
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        users = result.users;
+                        renderTable();
+                        renderDashboard();
+                        showToast('Dados reiniciados com sucesso!');
+                    }
+                } catch (error) {
+                    showToast('Erro ao reiniciar dados no servidor', 'error');
+                }
+            }
+        }
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('dropdown-menu');
+            dropdown.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>
